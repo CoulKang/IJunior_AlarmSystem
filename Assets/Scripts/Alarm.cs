@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(AudioSource))]
@@ -7,27 +8,42 @@ public class Alarm : MonoBehaviour
 
     [SerializeField] private AudioSource _audioSource;
 
-    private bool _isActive = false;
-
-    private void Update()
-    {
-        if (_audioSource.isPlaying && _isActive)
-            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, 1f, _alarmIncrement * Time.deltaTime);
-
-        if (_audioSource.isPlaying && _isActive == false)
-        {
-            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, 0f, _alarmIncrement * Time.deltaTime);
-
-            if (_audioSource.volume == 0)
-                _audioSource.Stop();
-        }
-    }
+    private Coroutine _volumeCoroutine;
 
     public void Launch()
     {
-        _isActive = true;
         _audioSource.Play();
+
+        ToggleVolumeChange(1f);
     }
 
-    public void Disable() => _isActive = false;
+    public void Disable()
+    {
+        ToggleVolumeChange(0f);
+    }
+
+    private void ToggleVolumeChange(float targetVolue)
+    {
+        if (_volumeCoroutine != null)
+            StopCoroutine(_volumeCoroutine);
+
+        _volumeCoroutine = StartCoroutine(ChangeVolume(targetVolue));
+    }
+
+    private IEnumerator ChangeVolume(float targetVolume)
+    {
+        while (_audioSource.volume != targetVolume)
+        {
+            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, targetVolume, _alarmIncrement * Time.deltaTime);
+
+            yield return null;
+        }
+
+        _audioSource.volume = targetVolume;
+
+        if (targetVolume == 0f && _audioSource.isPlaying)
+            _audioSource.Stop();
+
+        _volumeCoroutine = null;
+    }
 }
